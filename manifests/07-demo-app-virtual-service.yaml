@@ -1,0 +1,20 @@
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: istio-vc
+spec:
+  hosts:
+  - gke-grpc-gateway-api.chimbuc.dns.doit-playground.com
+  gateways:
+  - istio-system/istio-default-ingress-gateway
+  http:
+  - name: "default-route"
+    match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: grpcdemo.default.svc.cluster.local
+        port:
+          number: 8080

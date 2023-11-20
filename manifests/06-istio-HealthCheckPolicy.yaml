@@ -1,0 +1,17 @@
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: grpc-istio-demo-hc
+  namespace: istio-system
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        port: 15021
+        requestPath: /healthz/ready
+  targetRef:
+    group: ""
+    kind: Service
+    name: istio-ingressgateway

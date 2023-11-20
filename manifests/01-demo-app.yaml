@@ -1,0 +1,22 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpcdemo
+  labels:
+    app: grpcdemo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grpcdemo
+  template:
+    metadata:
+      labels:
+        app: grpcdemo
+    spec:
+      containers:
+      - name: grpcdemo
+        image: quay.io/stepanstipl/gke-grpc-stream:1
+        ports:
+        - containerPort: 8080
