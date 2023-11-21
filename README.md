@@ -22,34 +22,23 @@ You'll also need working DNS subdomain to point to the load balancer IP.
     --global
   ```
 
-- Point the public DNS to the previously created global IP (I'll be
-  using `gke-grpc-gateway-api.chimbuc.dns.doit-playground.com`)
+- Point the public DNS to the previously created global IP (I'll be using `gke-grpc-gateway-api.chimbuc.dns.doit-playground.com`)
 
-- Create Google-managed SSL certificate
+- Create Google-managed SSL certificate for LB.
   ```shell
   $ gcloud compute ssl-certificates create gke-grpc-gateway-api-cert \
     --domains=gke-grpc-gateway-api.chimbuc.dns.doit-playground.com \
     --global
   ```
 
-- Generate self-signed certificate for the istio ingressgateway
+- Generate self-signed certificate for the istio ingressgateway.I am using mkcert [^2] to generate the certificate.
+- TLS is required both between client and GFE, as well as GFE and backend [^3]. Istio will use the self-signed cert for LB to istio-ingressgateway.
 
   ```shell
-  $ openssl ecparam -genkey -name prime256v1 -noout -out key.pem
-  $ openssl req -x509 -new -key key.pem -out cert.pem -days 3650 -subj '/CN=internal'
+  $ mkcert internal
   ```
-  TLS is required both between client and GFE, as well as GFE and backend [^2]. Istio will use the self-signed cert for LB to istio-ingressgateway.
-
-  **Important:** The certificate has to use one of supported signatures
-  compatible with BoringSSL, see [^3][^4] for more details. 
-
-- Create K8S Secret with the self-signed cert
-  ```shell
-  $ kubectl create secret tls grpc-istio-demo-tls \
-  --cert=cert.pem \
-  --key=key.pem \
-  --namespace istio-system
-  ```
+  
+  **Important:** The certificate has to use one of supported signatures compatible with BoringSSL, see [^4][^5] for more details. 
 
 - Install istio with [istioctl](https://istio.io/latest/docs/setup/install/istioctl/). The `istio-custom.yaml` file contains custom configurations required for this setup.
 
@@ -59,17 +48,21 @@ You'll also need working DNS subdomain to point to the load balancer IP.
     $ curl -L https://istio.io/downloadIstio | sh -
     ```
 
-    Move to the Istio package directory. For example, if the package is istio-1.20.0:
-    ```shell
-    $ cd istio-1.20.0
-    ```
-    Install Istio with default configuration profile
+    Install Istio with default configuration profile.For example, if the package is istio-1.20.0:
 
     ```shell
-    $ ./bin/istioctl install -f custom.yaml
+    $ ./istio-1.20.0/bin/istioctl install -f istio-custom.yaml -y
     ```
 
-- Enable _istio sidecar injection_ for _default_ namespce.
+- Create K8S Secret with the self-signed cert.
+  ```shell
+  $ kubectl create secret tls grpc-istio-demo-tls \
+  --cert=internal.pem \
+  --key=internal-key.pem \
+  --namespace istio-system
+  ```
+
+- Enable istio sidecar injection for default namespce.
   ```shell
   $ kubectl label namespace default istio-injection=enabled
   ```
@@ -81,46 +74,46 @@ You'll also need working DNS subdomain to point to the load balancer IP.
 
   We're using the *Cloud Run gRPC Server Streaming sample application*[^5] which listens on port 8080.
 
-- Deploy the demo app svc.
+- Deploy the demo app K8S svc.
   ```shell
   $ kubectl apply -f manifests/02-demo-app-service.yaml
   ```
 
-- Deploy _*gke-l7-global-external-managed*_ gateway.
+- Deploy gke-l7-global-external-managed gateway.
   ```shell
   $ kubectl apply -f manifests/03-gateway.yaml
   ```
 
-- Deploy _istio gateway resource for ingressgateway_
+- Deploy istio gateway resource for ingressgateway.
   ```shell
   $ kubectl apply -f manifests/04-istio-default-gateway.yaml
   ```
 
-- Deploy _istio ingressgateway_ HTTPRoute
+- Deploy istio ingressgateway HTTPRoute.
   ```shell
   $ kubectl apply -f manifests/05-istio-default-httproute.yaml
   ```
   *Don't forget to change the DNS in the manifest.*
 
-- Deploy _istio ingressgateway_ HealthCheckPolicy
+- Deploy istio ingressgateway HealthCheckPolicy.
   ```shell
   $ kubectl apply -f manifests/06-istio-HealthCheckPolicy.yaml
   ```
-  *Istio ingressgateway will be the only backend added to the load balancer and istio will perform internal application routing based on the virtual service configuration*
+  *Istio ingressgateway will be the only backend added to the load balancer, and istio will perform internal application routing based on the virtual service configuration*
 
-- Deploy _demo app istio virtual service_
+- Deploy demo app istio virtual service.
   ```shell
   $ kubectl apply -f manifests/07-demo-app-virtual-service.yaml
   ```
 
-- Optional - Deploy _istio telemetry to enable access logs_
+- Optional - Deploy Istio telemetry to enable access logs
   ```shell
   $ kubectl apply -f manifests/08-istio-telemetry-for-access-logs.yaml
   ```
 
 - Test
 
-  Clone the repository [^5] and build the client:
+  Clone the repository [^6] and build the client:
   ```shell
   $ git clone https://github.com/GoogleCloudPlatform/golang-samples
   $ cd golang-samples/run/grpc-server-streaming
@@ -144,9 +137,9 @@ You'll also need working DNS subdomain to point to the load balancer IP.
     end of stream$ 
     ```
 
-
-[^1]: https://cloud.google.com/kubernetes-engine/docs/concepts/gateway-api
-[^2]: https://cloud.google.com/load-balancing/docs/https#using_grpc_with_your_applications
-[^3]: https://github.com/grpc/grpc/issues/6722
-[^4]: https://groups.google.com/a/chromium.org/forum/#!msg/blink-dev/kWwLfeIQIBM/9chGZ40TCQAJ
-[^5]: https://github.com/GoogleCloudPlatform/golang-samples/tree/main/run/grpc-server-streaming
+[^1]: https://github.com/FiloSottile/mkcert
+[^2]: https://cloud.google.com/kubernetes-engine/docs/concepts/gateway-api
+[^3]: https://cloud.google.com/load-balancing/docs/https#using_grpc_with_your_applications
+[^4]: https://github.com/grpc/grpc/issues/6722
+[^5]: https://groups.google.com/a/chromium.org/forum/#!msg/blink-dev/kWwLfeIQIBM/9chGZ40TCQAJ
+[^6]: https://github.com/GoogleCloudPlatform/golang-samples/tree/main/run/grpc-server-streaming
