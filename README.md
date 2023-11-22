@@ -5,9 +5,9 @@ certificate for TLS termination at the LB and self-managed certificate for TLS t
 
 ## Prerequisites
 
-These steps expect GKE cluster with a Gateway Controller [^1] and internet access (to download the prebuilt container image). Also the usual `gcloud` CLI configured for your project and `kubectl` with credentials to your cluster.
+These steps expect a GKE cluster with a Gateway Controller [^1] and internet access (to download the prebuilt container image). Also, the usual `gcloud` CLI configured for your project and `kubectl` with credentials to your cluster.
 
-You'll also need working DNS subdomain to point to the load balancer IP.
+You'll also need a working DNS subdomain to point to the load balancer IP.
 
 ## Sample setup
 
@@ -24,31 +24,31 @@ You'll also need working DNS subdomain to point to the load balancer IP.
 
 - Point the public DNS to the previously created global IP (I'll be using `gke-grpc-gateway-api.chimbuc.dns.doit-playground.com`)
 
-- Create Google-managed SSL certificate for LB.
+- Create a Google-managed SSL certificate for LB.
   ```shell
   $ gcloud compute ssl-certificates create gke-grpc-gateway-api-cert \
     --domains=gke-grpc-gateway-api.chimbuc.dns.doit-playground.com \
     --global
   ```
 
-- Generate self-signed certificate for the istio ingressgateway.I am using mkcert [^2] to generate the certificate.
+- Generate a self-signed certificate for the istio ingressgateway. I am using mkcert [^2] to generate the certificate.
 - TLS is required both between client and GFE, as well as GFE and backend [^3]. Istio will use the self-signed cert for LB to istio-ingressgateway.
 
   ```shell
   $ mkcert internal
   ```
   
-  **Important:** The certificate has to use one of supported signatures compatible with BoringSSL, see [^4][^5] for more details. 
+  **Important:** The certificate has to use one of the supported signatures compatible with BoringSSL, see [^4][^5] for more details. 
 
 - Install istio with [istioctl](https://istio.io/latest/docs/setup/install/istioctl/). The `istio-custom.yaml` file contains custom configurations required for this setup.
 
-    The default installation creates a L4 load balancer but we do not require the L4 load balancer for this setup.Go to the Istio release page to download the installation file for your OS, or download and extract the latest release automatically (Linux or macOS):
+    The default installation creates a L4 load balancer but we do not require the L4 load balancer for this setup. Go to the Istio release page to download the installation file for your OS, or download and extract the latest release automatically (Linux or macOS):
 
     ```shell
     $ curl -L https://istio.io/downloadIstio | sh -
     ```
 
-    Install Istio with default configuration profile.For example, if the package is istio-1.20.0:
+    Install Istio with the default configuration profile. For example, if the package is istio-1.20.0:
 
     ```shell
     $ ./istio-1.20.0/bin/istioctl install -f istio-custom.yaml -y
@@ -62,7 +62,7 @@ You'll also need working DNS subdomain to point to the load balancer IP.
   --namespace istio-system
   ```
 
-- Enable istio sidecar injection for default namespce.
+- Enable istio sidecar injection for default namespace.
   ```shell
   $ kubectl label namespace default istio-injection=enabled
   ```
@@ -137,8 +137,8 @@ You'll also need working DNS subdomain to point to the load balancer IP.
     end of stream$ 
     ```
 
-[^1]: https://github.com/FiloSottile/mkcert
-[^2]: https://cloud.google.com/kubernetes-engine/docs/concepts/gateway-api
+[^1]: https://cloud.google.com/kubernetes-engine/docs/concepts/gateway-api
+[^2]: https://github.com/FiloSottile/mkcert
 [^3]: https://cloud.google.com/load-balancing/docs/https#using_grpc_with_your_applications
 [^4]: https://github.com/grpc/grpc/issues/6722
 [^5]: https://groups.google.com/a/chromium.org/forum/#!msg/blink-dev/kWwLfeIQIBM/9chGZ40TCQAJ
